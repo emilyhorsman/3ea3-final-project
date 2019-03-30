@@ -1,0 +1,95 @@
+#+TITLE: Target Language
+#+OPTIONS: ':t
+#+LATEX_COMPILER: lualatex -shell-escape
+#+LATEX_HEADER: \usepackage{parskip}
+
+* Frontmatter
+
+#+begin_src agda2
+module Target where
+
+open import Data.Fin
+open import Data.Nat
+open import Data.Vec
+#+end_src
+
+* Overview
+
+Our target language will be comprised of an instruction set for a simple [[https://en.wikipedia.org/wiki/Random-access_machine#Refresher:_The_counter-machine_model][counter machine]].
+A member of the target language is a list of instructions.
+This machine consists of an unbounded number of ℕ-labelled registers and an instruction pointer.
+Every register holds a natural number and is initially 0.
+Registers do not need to be allocated.
+Their default value is always 0.
+Incrementing a register for the first time changes its value to 1.
+We assume that register 0 is reserved.
+
+| Instruction | Description                                                                |
+| ~INCR r~    | Increments the value at register ~r~ and advances the instruction pointer. |
+| ~DECR r~    | Decrements the value at register ~r~ and advances the instruction pointer. |
+| ~JZ r t~    | Jumps to instruction ~t~ if the value at register ~r~ is 0.                |
+| ~HALT~      | Halts execution.                                                           |
+
+We need a way to execute a program in order to prove the correctness of a compiler targeting this language.
+
+* Instruction Language
+
+We'll define two initial types to give us semantic naming.
+
+As said, our register labels are natural numbers.
+
+#+begin_src agda2
+RegisterLabel = ℕ
+#+end_src
+
+The instruction indices of our language are also natural numbers.
+It would be convenient to gain correctness from dependent types by using ~Fin n~ where ~n~ is the length of the program.
+This would make it impossible to produce a ~JZ~ instruction that jumped to an undefined instruction.
+However, this makes defining and composing programs difficult.
+Thus, our initial type will simply use ℕ.
+
+#+begin_src agda2
+InstructionIndex = ℕ
+#+end_src agda2
+
+Let's produce a data type to work with these instructions.
+
+#+begin_src agda2
+data Instruction : Set where
+  INCR : RegisterLabel → Instruction
+  DECR : RegisterLabel → Instruction
+  JZ   : RegisterLabel → InstructionIndex → Instruction
+  HALT : Instruction
+#+end_src
+
+** Sample Programs
+
+We need a register which always contains the value of 0.
+All these sample programs assume that register 0 always contains 0.
+No part of the program will touch register 0.
+We can enforce this with types!
+
+*** Clear a register
+
+We use ~INCR 0 ∷ DECR 0~ as ~skip~.
+
+#+begin_src agda2
+program-clear-register : (r : RegisterLabel) → {pf : r > 0} → Vec Instruction 5
+program-clear-register r = JZ r (suc (suc (suc zero))) ∷ DECR r ∷ JZ 0 zero ∷ INCR 0 ∷ DECR 0 ∷ []
+#+end_src agda2
+
+*** Count to three!
+
+#+begin_src agda2
+program-count-to-3 : (r : RegisterLabel) → {pf : r > 0} → Vec Instruction 9
+program-count-to-3 r {pf} = program-clear-register r {pf} ++ INCR r ∷ INCR r ∷ INCR r ∷ HALT ∷ []
+#+end_src
+
+*** Count to infinity!
+
+We can express non-terminating programs in our target language!
+
+#+begin_src agda2
+program-count-to-∞ : (r : RegisterLabel) → {pf : r > 0} → Vec Instruction 7
+program-count-to-∞ r {pf} = program-clear-register r {pf} ++ INCR r ∷ JZ 0 5 ∷ []
+#+end_src
