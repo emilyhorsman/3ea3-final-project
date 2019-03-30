@@ -1,2 +1,8 @@
 *.agdai
 *.agda~
+*.pdf
+*.tex*
+*.html*
+html/
+*.org~
+edit
