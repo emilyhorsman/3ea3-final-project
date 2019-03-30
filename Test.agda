@@ -1,13 +1,20 @@
 open import Data.Fin
+open import Data.Maybe
 open import Data.Nat
 open import Data.Nat.DivMod
+open import Data.Product
 open import Data.Sum
 open import Data.Vec
-open import Data.Maybe
 open import Relation.Binary.PropositionalEquality
 open import Relation.Nullary
 open import Relation.Nullary.Decidable using (False)
 open ≡-Reasoning
+
+{- Z-notation for sums -}
+Σ∶• : ∀{a b} (A : Set a) (B : A → Set b) → Set _
+Σ∶• = Σ
+infix -666 Σ∶•
+syntax Σ∶• A (λ x → B) = Σ x ∶ A • B  -- \:
 
 inc : {n : ℕ} → Fin n → Maybe (Fin n)
 inc {suc (suc n)} zero = just (suc zero)
@@ -62,12 +69,26 @@ x f _ = x
 _ : (step (run program₁ zero 0)) f 1 ≡ Halted 1
 _ = refl
 
-program₃ : Vec Instruction 1
-program₃ = Rest ∷ []
+-- This should never terminate!
+program₃ : Vec Instruction 2
+program₃ = Next ∷ Rest ∷ []
 
-pf₀ : ∀ (n : ℕ) → step (run {1} program₃ zero 0) ≢ Halted n
-pf₀ n ()
-
-pf₁ : ∀ {n : ℕ} (steps : ℕ) → step (run {1} program₃ zero 0) f steps ≢ Halted n
+-- We will not halt no matter which instruction pointer we observe from.
+pf₁
+  : ∀ {n init : ℕ} (ip : Fin 2)
+  → (step (run {2} program₃ ip init)) f 2 ≢ Halted n
 pf₁ zero ()
-pf₁ (suc steps) = {!!}
+pf₁ (suc zero) ()
+pf₁ (suc (suc ()))
+
+-- How do we prove that we will never halt when starting from the beginning
+-- of this program?
+program₄ : Vec Instruction 3
+program₄ = Next ∷ Rest ∷ Next ∷ []
+
+pf₂
+  : ∀ {n init : ℕ} (steps : ℕ)
+  → (step (run {3} program₄ zero init)) f steps ≢ Halted n
+pf₂ zero ()
+pf₂ (suc zero) ()
+pf₂ (suc (suc steps)) = {!!}
