@@ -19,6 +19,8 @@ Tested in Agda v2.6.0 ([[https://github.com/emilyhorsman/agda/commit/cc54e157a61
   Use short sentences.
   This will improve the readability of version control diffs.
 + Delete trailing whitespace. (~M-x delete-trailing-whitespace~)
++ Use ~#+STARTUP: showall~ for convenient switching between major modes.
+  Without this, switching from Agda mode to Org mode will lose your cursor position.
 
 ** Agda
 
@@ -46,3 +48,9 @@ Tested in Agda v2.6.0 ([[https://github.com/emilyhorsman/agda/commit/cc54e157a61
     Similar argument to communication.
 + Avoid abbreviation.
   Abstraction and design should reduce thinking, not keystrokes.
++ Parameterized modules should /always/ be imported with a qualified import.
+
+  #+begin_src
+  open import Data.AVL <-isStrictTotalOrder as AVL
+  #+end_src
++ Align the ~:~ operator in data type constructors when they are within four columns.
