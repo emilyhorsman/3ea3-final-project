@@ -11,7 +11,17 @@ Tested in Agda v2.6.0 ([[https://github.com/emilyhorsman/agda/commit/cc54e157a61
 
 * Style Guide
 
+** Literate Programming
+
 + All modules must be written in a literate programming fashion using Org mode.
++ Do not wrap prose at a fixed number of columns as you do with source code.
+  Use a single line per sentence.
+  Use short sentences.
+  This will improve the readability of version control diffs.
++ Delete trailing whitespace. (~M-x delete-trailing-whitespace~)
+
+** Agda
+
 + Long type signatures must be split into multiple lines.
   The function name must be on its own line.
   The last return type must be on its own line.
