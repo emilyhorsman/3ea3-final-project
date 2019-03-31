@@ -6,3 +6,5 @@
 html/
 *.org~
 edit
+*#
+.#*
