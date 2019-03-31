@@ -10,11 +10,15 @@
 module Target where
 
 open import Data.Fin
+open import Data.Fin.Properties using (toℕ≤pred[n])
 open import Data.Maybe using (Maybe; fromMaybe)
-open import Data.Nat
+open import Data.Nat renaming (_<_ to _<ₙ_; _≤_ to _≤ₙ_)
 open import Data.Product
 open import Data.Vec as Vec hiding (lookup)
 open import Function using (const; _∘_; _$_)
+open import Relation.Binary.PropositionalEquality
+
+open import Utility using (inc)
 #+end_src
 
 * Overview
@@ -179,6 +183,8 @@ record Configuration (n : ℕ) : Set where
   field
     pointer   : Fin n
     registers : Registers
+
+open Configuration
 #+end_src
 
 Now we must write our coinductive record for the trace of an execution.
@@ -211,50 +217,61 @@ open Trace
 We'll define a function ~small-step~ returns a ~State~ member given an instruction and ~Configuration~.
 There are four instructions to handle.
 We will specify the postcondition for each case and compute the function.
-To simplify this, we perform the case split on ~small-step~ and write the signatures for the functions we must compute: ~{incr,decr,jz,halt}-step~.
 
 #+begin_src agda2
-incr-step
-  : {|program| : ℕ} → Program |program|
-  → RegisterLabel → Configuration |program|
-  → State {|program|}
-decr-step
-  : {|program| : ℕ} → Program |program|
-  → RegisterLabel → Configuration |program|
-  → State {|program|}
-jz-step
-  : {|program| : ℕ} → Program |program|
-  → RegisterLabel → ℕ → Configuration |program|
-  → State {|program|}
-halt-step
-  : {|program| : ℕ} → Program |program|
-  → Configuration |program|
-  → State {|program|}
-
 small-step
   : ∀ {|program| : ℕ}
   → Instruction → Program |program| → Configuration |program|
   → State {|program|}
-small-step (INCR label) program conf = incr-step program label conf
-small-step (DECR label) program conf = decr-step program label conf
-small-step (JZ label target) program conf = jz-step program label target conf
-small-step HALT program conf = halt-step program conf
 #+end_src
 
-There are some conjuncts of each postcondition that are shared by all instruction functions.
-We'll use the variable ~r~ to indicate the result of the expression.
+We will have the following variables:
+
+| Variable    | Type            |
+| ~∣program∣~ | ~ℕ~             |
+| ~instr~     | ~Instruction~   |
+| ~program~   | ~Program~       |
+| ~c~         | ~Configuration~ |
+
+We'll specify the expressions ~E.i~, ~E.d~, ~E.j~, and ~E.h~ for each of the cases of ~instr~.
+There are invariants that hold before and after ~E~: ~Inv₁~, ~Inv₂~, and ~Inv₃~.
+
++ Inv₂ :: All configurations must point to a defined instruction.
+    ~∀ |program| : ℕ, c : Configuration |program| • pointer c < |program|~
++ Inv₃ :: All programs are non-empty.
+    This necessarily follows from Inv₂.
+    ~∀ |program| : ℕ, c : Configuration |program| • 0 < |program|~
+
+*** ~INCR~: ~E.i~
+
+~INCR~ should increment the value at the given register label and then advance the instruction pointer.
+We have one more variable from pattern matching the ~Instruction~: ~label : RegisterLabel~.
+
+1. We must advance to a ~Crashed~ state to satisfy ~Inv₂~ if this is the last instruction in the program.
+2. We should increment our instruction pointer and advance to a ~Running~ state if this is not the last instruction in the program.
+3. The register at ~label~ should be incremented.
 
 #+begin_src
-R₀ ≡ Inv₁
-R₁ ≡ pointer (conf r) < |program|
+R₁ ≡ 1 + pointer c = |program| ⇒ is-crashed E.i
+R₂ ≡ 1 + pointer c < |program| ⇒ is-running E.i ∧ pointer (conf E.i) = 1 + pointer c
+R₃ ≡ lookup label (registers (conf E.i)) = 1 + lookup label (registers c)
 #+end_src
 
-~R₁~ requires our programs to be non-empty.
-This yields the precondition for all functions:
+The antecedents of ~R₁~ and ~R₂~ do not form a complete proposition.
+However, they are sufficient given Inv₂ (which Agda confirms for us trivially below).
+Note that we do not need to accept Inv₂ as an argument because we get it from the type of ~Configuration~.
 
-#+begin_src
-Q₀ ≡ 0 < |program|
+#+begin_src agda2
+pf-R₁-R₂-completeness
+  : (|program| : ℕ)
+  → (c : Configuration |program|)
+  → toℕ (suc (pointer c)) ≤ₙ |program|
+pf-R₁-R₂-completeness |program| c = toℕ≤pred[n] (suc (pointer c))
 #+end_src
+
+
+
+** ~small~
 
 We'll define a function ~small~ which returns a ~Trace~ record given a program and ~Configuration~.
 It must retrieve the instruction at the current pointer and then case split on the instruction.
