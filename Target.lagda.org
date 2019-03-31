@@ -13,7 +13,7 @@ open import Data.Fin
 open import Data.Maybe using (Maybe; fromMaybe)
 open import Data.Nat
 open import Data.Product
-open import Data.Vec hiding (lookup)
+open import Data.Vec as Vec hiding (lookup)
 open import Function using (const; _∘_; _$_)
 #+end_src
 
@@ -264,5 +264,6 @@ small
   : ∀ {|program| : ℕ}
   → Vec Instruction |program| → Configuration |program|
   → Trace {|program|}
-step (small program conf@(⟨ pointer , _ ⟩)) = small-step (lookup pointer program) program conf
+step (small program conf@(⟨ pointer , _ ⟩)) =
+  small-step (Vec.lookup pointer program) program conf
 #+end_src
