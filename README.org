@@ -1,0 +1,38 @@
+#+TITLE: 3EA3 Final Project
+#+AUTHOR: Emily Horsman
+
+* Overview
+
+This repo contains my final project for [[https://web.archive.org/web/20190331012540/http://www.cas.mcmaster.ca/~alhassm/][3EA3: Software Specifications and Correctness, Winter 2019]].
+
+* Agda
+
+Tested in Agda v2.6.0 ([[https://github.com/emilyhorsman/agda/commit/cc54e157a61dc97cbb9014f003d9637f2f821e3f][cc54e157a]]).
+
+* Style Guide
+
++ All modules must be written in a literate programming fashion using Org mode.
++ Long type signatures must be split into multiple lines.
+  The function name must be on its own line.
+  The last return type must be on its own line.
+
+  #+begin_src
+  example-proof
+    : ∀ {n : ℕ}
+    → Fin n
+    → Maybe (Fin n)
+  #+end_src
++ Use ~Function._$_~ when it improves readability.
++ Use Unicode only when it provides particularly rich meaning.
+  Unicode in source code can improve readability if it provides canonical/familiar, terse nouns (e.g., ℕ).
+  When choosing names, remember:
+  + Writability and communication:
+    The Agda input method in Emacs lets easily enter Unicode.
+    We do not have this luxury when talking about Agda in other mediums (Slack, email, etc…)
+  + Consistency:
+    Using consistent naming conventions is already a challenge in programming.
+    Expanding the possibilities can make this more difficult if it does not allow a previously unusable canonical name.
+  + Searchability:
+    Similar argument to communication.
++ Avoid abbreviation.
+  Abstraction and design should reduce thinking, not keystrokes.
