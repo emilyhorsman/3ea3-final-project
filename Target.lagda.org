@@ -1,4 +1,5 @@
 #+TITLE: Target Language
+#+STARTUP: showall
 #+OPTIONS: ':t
 #+LATEX_COMPILER: lualatex -shell-escape
 #+LATEX_HEADER: \usepackage{parskip}
@@ -9,8 +10,11 @@
 module Target where
 
 open import Data.Fin
+open import Data.Maybe using (Maybe; fromMaybe)
 open import Data.Nat
-open import Data.Vec
+open import Data.Product
+open import Data.Vec hiding (lookup)
+open import Function using (const; _∘_; _$_)
 #+end_src
 
 * Overview
@@ -62,6 +66,12 @@ data Instruction : Set where
   HALT : Instruction
 #+end_src
 
+A program will be a vector of instructions.
+
+#+begin_src agda2
+Program = Vec Instruction
+#+end_src agda2
+
 ** Sample Programs
 
 We need a register which always contains the value of 0.
@@ -92,4 +102,167 @@ We can express non-terminating programs in our target language!
 #+begin_src agda2
 program-count-to-∞ : (r : RegisterLabel) → {pf : r > 0} → Vec Instruction 7
 program-count-to-∞ r {pf} = program-clear-register r {pf} ++ INCR r ∷ JZ 0 5 ∷ []
+#+end_src
+
+* Execution
+
+** Register Representation
+
+Our register labels may not be contiguous and we have not required them to be pre-allocated.
+Thus, we require a tree to represent our register label/value pairs.
+Our tree will have homogeneous values (all ℕ).
+
+#+begin_src agda2
+open import Data.Nat.Properties using (<-isStrictTotalOrder)
+
+RegLabelStrictTotalOrder = <-isStrictTotalOrder
+
+open import Data.AVL RegLabelStrictTotalOrder as AVL hiding (lookup)
+
+Registers = AVL.Tree (const ℕ)
+#+end_src
+
+Earlier we stated that registers are 0 by default and do not need to be pre-allocated.
+Let's write an accessor for this to avoid dealing with sum types in the future.
+
+#+begin_src agda2
+lookup : RegisterLabel → Registers → ℕ
+lookup label registers = fromMaybe 0 $ AVL.lookup label registers
+#+end_src
+
+** Execution State
+
+The instruction set motivates three possible execution states.
+/Final/ indicates that the instruction pointer and register state are now final and further simulation steps are idempotent.
+
+| State     | Motivation                                                      | /Final/ |
+| ~Running~ | We are able to execute from the current state.                  | NO      |
+| ~Halted~  | We have executed a ~HALT~ instruction.                          | YES     |
+| ~Crashed~ | The instruction pointer was advanced past the last instruction. | YES     |
+
+#+begin_src
+data State : Set where
+  Running : State
+  Halted  : State
+  Crashed : State
+#+end_src
+
+** Simulation and Termination
+
+Programs can jump to a previous instruction.
+This means that programs may never terminate!
+~[ JZ 0 0 ]~ should clearly never terminate given the semantics discussed so far.
+
+Execution of the program does not reduce the execution to a structurally smaller subproblem.
+Thus we cannot execute a program via induction on the program.
+This leads to an invariant on our execution:
+
++ Inv₁ :: Execution of the program never modifies the length of the program or the definition of instructions comprising the program.
+
+*** Trace
+
+Instead, our simulation of a program given an initial configuration will consist of making a finite number of "observations" or steps.
+Thus a single step of execution concerns itself with [[https://agda.readthedocs.io/en/latest/language/coinduction.html][/productivity/]].
+We require a coinductive type which represents the execution trace of our program.
+We can "observe" the execution of a program by destructing the coinductive type.
+
+Our execution of a program requires knowing the current state of the registers and which instruction to execute next.
+We can use a ~Fin n~ to represent the instruction pointer, where ~n~ is the length of the program.
+This will ensure that we can never advance to an undefined instruction.
+Further, this means that the length of the program should /parameterize/ the data type, not /index/ the data type.
+This is because a constructor of our execution state should never change the program.
+**Correctness remark!** Here we use the type system to guarantee that our execution implementation never advances to a state where the program is undefined.
+
+#+begin_src agda2
+record Configuration (n : ℕ) : Set where
+  constructor ⟨_,_⟩
+  field
+    pointer   : Fin n
+    registers : Registers
+#+end_src
+
+Now we must write our coinductive record for the trace of an execution.
+We'll replace our previous ~State~ with one that holds a ~Configuration~ product and possibly a ~Trace~.
+The ~Trace~ record has a single field: ~step~ (as in small-step semantics).
+
+#+begin_src agda2
+data State {|program| : ℕ} : Set
+
+record Trace {|program| : ℕ} : Set where
+  coinductive
+  field
+    step : State {|program|}
+
+data State {|program|} where
+  Running : Configuration |program| → Trace {|program|} → State
+  Halted  : Configuration |program| → State
+  Crashed : Configuration |program| → State
+
+conf : {n : ℕ} → State → Configuration n
+conf (Running c _) = c
+conf (Halted c)    = c
+conf (Crashed c)   = c
+
+open Trace
+#+end_src
+
+** Small-step Instruction Semantics
+
+We'll define a function ~small-step~ returns a ~State~ member given an instruction and ~Configuration~.
+There are four instructions to handle.
+We will specify the postcondition for each case and compute the function.
+To simplify this, we perform the case split on ~small-step~ and write the signatures for the functions we must compute: ~{incr,decr,jz,halt}-step~.
+
+#+begin_src agda2
+incr-step
+  : {|program| : ℕ} → Program |program|
+  → RegisterLabel → Configuration |program|
+  → State {|program|}
+decr-step
+  : {|program| : ℕ} → Program |program|
+  → RegisterLabel → Configuration |program|
+  → State {|program|}
+jz-step
+  : {|program| : ℕ} → Program |program|
+  → RegisterLabel → ℕ → Configuration |program|
+  → State {|program|}
+halt-step
+  : {|program| : ℕ} → Program |program|
+  → Configuration |program|
+  → State {|program|}
+
+small-step
+  : ∀ {|program| : ℕ}
+  → Instruction → Program |program| → Configuration |program|
+  → State {|program|}
+small-step (INCR label) program conf = incr-step program label conf
+small-step (DECR label) program conf = decr-step program label conf
+small-step (JZ label target) program conf = jz-step program label target conf
+small-step HALT program conf = halt-step program conf
+#+end_src
+
+There are some conjuncts of each postcondition that are shared by all instruction functions.
+We'll use the variable ~r~ to indicate the result of the expression.
+
+#+begin_src
+R₀ ≡ Inv₁
+R₁ ≡ pointer (conf r) < |program|
+#+end_src
+
+~R₁~ requires our programs to be non-empty.
+This yields the precondition for all functions:
+
+#+begin_src
+Q₀ ≡ 0 < |program|
+#+end_src
+
+We'll define a function ~small~ which returns a ~Trace~ record given a program and ~Configuration~.
+It must retrieve the instruction at the current pointer and then case split on the instruction.
+
+#+begin_src agda2
+small
+  : ∀ {|program| : ℕ}
+  → Vec Instruction |program| → Configuration |program|
+  → Trace {|program|}
+step (small program conf@(⟨ pointer , _ ⟩)) = small-step (lookup pointer program) program conf
 #+end_src
