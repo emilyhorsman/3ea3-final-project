@@ -11,11 +11,11 @@ module Target where
 
 open import Data.Fin
 open import Data.Fin.Properties using (toℕ≤pred[n])
-open import Data.Maybe using (Maybe; fromMaybe)
+open import Data.Maybe
 open import Data.Nat renaming (_<_ to _<ₙ_; _≤_ to _≤ₙ_)
 open import Data.Product
 open import Data.Vec as Vec hiding (lookup)
-open import Function using (const; _∘_; _$_)
+open import Function using (const; _∘_; _$_; _ˢ_)
 open import Relation.Binary.PropositionalEquality
 
 open import Utility using (inc)
@@ -272,18 +272,30 @@ pf-R₁-R₂-completeness
 pf-R₁-R₂-completeness |program| c = toℕ≤pred[n] (suc (pointer c))
 #+end_src
 
-
-
-** ~small~
-
-We'll define a function ~small~ which returns a ~Trace~ record given a program and ~Configuration~.
-It must retrieve the instruction at the current pointer and then case split on the instruction.
+*** Agda
 
 #+begin_src agda2
+modify-registers : RegisterLabel → (ℕ → ℕ) → Registers → Registers
+modify-registers label f registers =
+  AVL.insert label (f $ lookup label registers) registers
+
 small
   : ∀ {|program| : ℕ}
   → Vec Instruction |program| → Configuration |program|
   → Trace {|program|}
 step (small program conf@(⟨ pointer , _ ⟩)) =
   small-step (Vec.lookup pointer program) program conf
+
+small-step {n} (INCR label) program c with inc (pointer c)
+... | nothing = Crashed c
+... | just ip =
+        Running ˢ (small program) $
+          ⟨ ip , modify-registers label suc (registers c) ⟩
+small-step (DECR r) x₁ x₂ = {!!}
+small-step (JZ x x₃) x₁ x₂ = {!!}
+small-step HALT x₁ x₂ = {!!}
 #+end_src
+
+*** Proving Correctness
+
+**** ~INCR~
