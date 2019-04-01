@@ -9,6 +9,7 @@
 #+begin_src agda2
 module Target where
 
+open import Data.Bool
 open import Data.Fin
 open import Data.Fin.Properties using (toℕ≤pred[n])
 open import Data.Maybe
@@ -17,8 +18,15 @@ open import Data.Product
 open import Data.Vec as Vec hiding (lookup)
 open import Function using (const; _∘_; _$_; _ˢ_)
 open import Relation.Binary.PropositionalEquality
+open ≡-Reasoning
 
 open import Utility using (inc)
+
+{- Z-notation for sums -}
+Σ∶• : ∀{a b} (A : Set a) (B : A → Set b) → Set _
+Σ∶• = Σ
+infix -666 Σ∶•
+syntax Σ∶• A (λ x → B) = Σ x ∶ A • B  -- \:
 #+end_src
 
 * Overview
@@ -287,7 +295,8 @@ step (small program conf@(⟨ pointer , _ ⟩)) =
   small-step (Vec.lookup pointer program) program conf
 
 small-step {n} (INCR label) program c with inc (pointer c)
-... | nothing = Crashed c
+... | nothing =
+        Crashed ⟨ pointer c , modify-registers label suc (registers c) ⟩
 ... | just ip =
         Running ˢ (small program) $
           ⟨ ip , modify-registers label suc (registers c) ⟩
@@ -299,3 +308,47 @@ small-step HALT x₁ x₂ = {!!}
 *** Proving Correctness
 
 **** ~INCR~
+
+#+begin_src agda2
+pf-R₃-incr
+  : (n : ℕ)
+  → (c : Configuration n)
+  → (program : Program n)
+  → (label : RegisterLabel)
+  → (pf : inc (pointer c) ≡ nothing)
+  → lookup label (registers (conf (small-step (INCR label) program c)))
+      ≡ suc (lookup label (registers c))
+pf-R₃-incr n c program label pf =
+  begin
+    lookup label (registers (conf (small-step (INCR label) program c)))
+  ≡⟨ {!!} ⟩
+    suc (lookup label (registers c))
+  ∎
+#+end_src
+
+#+begin_src agda2
+is-crashed : {n : ℕ} → State {n} → Bool
+is-crashed (Crashed _) = true
+is-crashed _ = false
+
+pf-R₁-incr
+  : (n : ℕ)
+  → (c : Configuration n)
+  → (program : Program n)
+  → (nonempty : n > 0)
+  → (antecedent : toℕ (suc (pointer c)) ≡ n)
+  → (label : RegisterLabel)
+  → is-crashed (small-step (INCR label) program c) ≡ true
+  --→ Σ c′ ∶ Configuration n • small-step (INCR label) program c ≡ Crashed c′
+pf-R₁-incr (suc n) c program nonempty antecedent label =
+  begin
+    is-crashed (small-step (INCR label) program c)
+  ≡⟨ {!x!} ⟩
+    is-crashed (Crashed ⟨ pointer c , modify-registers label suc (registers c) ⟩)
+  ≡⟨ refl ⟩
+    true
+  ∎
+  where
+    -- Agda has enough information to know this is true!
+    x = inc (pointer c) ≡ nothing
+#+end_src
