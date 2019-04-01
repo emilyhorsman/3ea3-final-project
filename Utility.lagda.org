@@ -1,0 +1,48 @@
+#+TITLE: Utility
+#+STARTUP: showall
+#+OPTIONS: ':t
+#+LATEX_COMPILER: lualatex -shell-escape
+#+LATEX_HEADER: \usepackage{parskip}
+
+* Frontmatter
+
+#+begin_src agda2
+module Utility where
+
+open import Data.Fin
+open import Data.Maybe
+open import Data.Nat
+open import Relation.Binary.PropositionalEquality
+#+end_src
+
+** ~inc~
+
+Attempts to increment a member of ~Fin n~.
+
+#+begin_src agda2
+inc : {n : ℕ} → Fin n → Maybe (Fin n)
+inc {suc (suc n)} zero = just (suc zero)
+inc {suc n} (suc x) with inc {n} x
+... | just j  = just (suc j)
+... | nothing = nothing
+inc {suc n} zero = nothing
+inc {zero} ()
+#+end_src
+
+Some tests:
+
+#+begin_src agda2
+module _ where
+  private
+    one : Fin 3
+    one = suc zero
+
+    two : Fin 3
+    two = suc (suc (zero))
+
+    _ : inc two ≡ nothing
+    _ = refl
+
+    _ : inc one ≡ just two
+    _ = refl
+#+end_src
