@@ -250,11 +250,14 @@ We have one more variable from pattern matching the ~Instruction~: ~label : Regi
 1. We must advance to a ~Crashed~ state to satisfy ~Inv₂~ if this is the last instruction in the program.
 2. We should increment our instruction pointer and advance to a ~Running~ state if this is not the last instruction in the program.
 3. The register at ~label~ should be incremented.
+4. No other register should be modified.
 
 #+begin_src
 R₁ ≡ 1 + pointer c = |program| ⇒ is-crashed E.i
 R₂ ≡ 1 + pointer c < |program| ⇒ is-running E.i ∧ pointer (conf E.i) = 1 + pointer c
 R₃ ≡ lookup label (registers (conf E.i)) = 1 + lookup label (registers c)
+R₄ ≡ ∀ i : ℕ ∣ i ∈ registers c ∧ i ≠ label •
+         lookup label (registers (conf E.i)) = lookup label (registers c)
 #+end_src
 
 The antecedents of ~R₁~ and ~R₂~ do not form a complete proposition.
