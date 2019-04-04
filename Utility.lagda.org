@@ -9,10 +9,15 @@
 #+begin_src agda2
 module Utility where
 
+open import Data.Bool
 open import Data.Fin
 open import Data.Maybe
 open import Data.Nat
+open import Function
 open import Relation.Binary.PropositionalEquality
+open import Relation.Binary
+open import Relation.Nullary
+open ≡-Reasoning
 #+end_src
 
 ** ~inc~
@@ -22,10 +27,8 @@ Attempts to increment a member of ~Fin n~.
 #+begin_src agda2
 inc : {n : ℕ} → Fin n → Maybe (Fin n)
 inc {suc (suc n)} zero = just (suc zero)
-inc {suc n} (suc x) with inc {n} x
-... | just j  = just (suc j)
-... | nothing = nothing
-inc {suc n} zero = nothing
+inc {suc n} (suc x)    = map suc (inc {n} x)
+inc {suc n} zero       = nothing
 inc {zero} ()
 #+end_src
 
