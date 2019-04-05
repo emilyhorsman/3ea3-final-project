@@ -223,7 +223,7 @@ open Trace
 
 ** Small-step Instruction Semantics
 
-We'll define a function ~small-step~ returns a ~State~ member given an instruction and ~Configuration~.
+We'll define a function ~small-step~ which returns a ~State~ member given an instruction and ~Configuration~.
 There are four instructions to handle.
 We will specify the postcondition for each case and compute the function.
 
