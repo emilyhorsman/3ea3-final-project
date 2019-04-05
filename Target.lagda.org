@@ -281,6 +281,41 @@ pf-R₁-R₂-completeness
 pf-R₁-R₂-completeness |program| c = toℕ≤pred[n] (suc (pointer c))
 #+end_src
 
+*** ~DECR~: ~E.d~
+
+~DECR~ should decrement the value at the given register label and then advance the instruction pointer.
+The story here is identical to ~INCR~ with the exception of R₃.
+Noting that with subtraction over ℕ: ~zero - 1 = zero~.
+
+#+begin_src
+R₁ ≡ 1 + pointer c = |program| ⇒ is-crashed E.d
+R₂ ≡ 1 + pointer c < |program| ⇒ is-running E.d ∧ pointer (conf E.d) = 1 + pointer c
+R₃ ≡ lookup label (registers (conf E.d)) = lookup label (registers c) - 1
+R₄ ≡ ∀ i : ℕ ∣ i ∈ registers c ∧ i ≠ label •
+         lookup label (registers (conf E.d)) = lookup label (registers c)
+#+end_src
+
+*** ~HALT~: ~E.h~
+
+The ~HALT~ instruction halts execution.
+This means that we cannot observe a "next" state of an execution --- there is no next state.
+We need a ~State~ member.
+We cannot use ~Running~ since it includes a ~Trace~ member which would let us observe another state.
+We are left with only ~Crashed~ or ~Halted~.
+~Crashed~ has special meaning to us.
+We want our state to be ~Halted~.
+
+1. We must advance to a ~Halted~ state.
+2. We should not change the instruction pointer.
+   We must satisfy Inv₂.
+   The instruction pointer is already referring to a ~HALT~ instruction so we know it is well-defined.
+3. We must not modify the contents of the registers.
+
+#+begin_src
+R₁   ≡ is-halted E.h
+R₂,₃ ≡ conf E.h = c
+#+end_src
+
 *** Agda
 
 #+begin_src agda2
@@ -299,13 +334,20 @@ small-step (INCR label) program c =
   maybe
     (λ ip → (Running ˢ (small program)) ⟨ ip , reg ⟩)
     (Crashed ⟨ pointer c , reg ⟩)
-    (inc (pointer c)) 
+    (inc (pointer c))
   where
     reg : Registers
     reg = modify-registers label suc (registers c)
-small-step (DECR r) x₁ x₂ = {!!}
+small-step (DECR label) program c =
+  maybe
+    (λ ip → (Running ˢ (small program)) ⟨ ip , reg ⟩)
+    (Crashed ⟨ pointer c , reg ⟩)
+    (inc (pointer c))
+  where
+    reg : Registers
+    reg = modify-registers label Data.Nat.pred (registers c)
 small-step (JZ x x₃) x₁ x₂ = {!!}
-small-step HALT x₁ x₂ = {!!}
+small-step HALT _ c = Halted c
 
 _ : small-step (INCR 0) (INCR 0 ∷ []) ⟨ zero , empty ⟩ ≡ Crashed ⟨ zero , singleton zero 1 ⟩
 _ = refl
@@ -370,4 +412,17 @@ pf-R₁-incr (suc n) c program nonempty antecedent label =
   ∎
   where
     x = inc (pointer c) ≡ nothing
+#+end_src
+
+**** ~HALT~
+
+Agda trivially confirms all the postconditions for ~HALT~/~E.h~.
+
+#+begin_src agda2
+pf-requirements-halt
+  : {n : ℕ}
+  → {c : Configuration n}
+  → {program : Program n}
+  → small-step HALT program c ≡ Halted c
+pf-requirements-halt = refl
 #+end_src
