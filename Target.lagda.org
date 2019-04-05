@@ -316,7 +316,7 @@ R₁   ≡ is-halted E.h
 R₂,₃ ≡ conf E.h = c
 #+end_src
 
-*** Agda
+*** ~small-step~ Implementation
 
 #+begin_src agda2
 modify-registers : RegisterLabel → (ℕ → ℕ) → Registers → Registers
