@@ -318,43 +318,73 @@ R₂,₃ ≡ conf E.h = c
 
 *** ~small-step~ Implementation
 
+We'll write a helper function to map a function over a particular register.
+This helper function must understand our register semantics (default value is 0) and thus use our earlier helper ~lookup~.
+
 #+begin_src agda2
 modify-registers : RegisterLabel → (ℕ → ℕ) → Registers → Registers
 modify-registers label f registers =
   AVL.insert label (f $ lookup label registers) registers
 
+_ : modify-registers 1 suc empty ≡ singleton 1 1
+_ = refl
+
+_ : modify-registers 1 suc (singleton 1 1) ≡ singleton 1 2
+_ = refl
+#+end_src
+
+~small~ will produce a trace by executing a program with a given configuration.
+We must define it now since some ~State~ members require a ~Trace~ member.
+This will require mutual recursion.
+
+#+begin_src agda2
 small
   : ∀ {i : Size} {|program| : ℕ}
   → Vec Instruction |program| → Configuration |program|
   → Trace {i} {|program|}
 step (small program conf@(⟨ pointer , _ ⟩)) =
   small-step (Vec.lookup pointer program) program conf
+#+end_src
 
-small-step (INCR label) program c =
+Finally, ~small-step~ is achieved by case splitting on each instruction and filling in ~E.{i,h,j,d}~.
+
+~E.i~ and ~E.d~ have identical implementations save for the map given to ~modify-registers~.
+
+#+begin_src agda2
+next-conf-over-reg
+  : {i : Size} → {n : ℕ}
+  → (ℕ → ℕ)
+  → RegisterLabel
+  → Program n
+  → Configuration n
+  → State {i} {n}
+next-conf-over-reg f label program c =
   maybe
     (λ ip → (Running ˢ (small program)) ⟨ ip , reg ⟩)
     (Crashed ⟨ pointer c , reg ⟩)
     (inc (pointer c))
   where
     reg : Registers
-    reg = modify-registers label suc (registers c)
-small-step (DECR label) program c =
-  maybe
-    (λ ip → (Running ˢ (small program)) ⟨ ip , reg ⟩)
-    (Crashed ⟨ pointer c , reg ⟩)
-    (inc (pointer c))
-  where
-    reg : Registers
-    reg = modify-registers label Data.Nat.pred (registers c)
+    reg = modify-registers label f (registers c)
+#+end_src
+
+#+begin_src agda2
+small-step (INCR label) = next-conf-over-reg suc label
+small-step (DECR label) = next-conf-over-reg Data.Nat.pred label
 small-step (JZ x x₃) x₁ x₂ = {!!}
 small-step HALT _ c = Halted c
+#+end_src
 
+*** Unit Tests
+
+#+begin_src agda2
 _ : small-step (INCR 0) (INCR 0 ∷ []) ⟨ zero , empty ⟩ ≡ Crashed ⟨ zero , singleton zero 1 ⟩
 _ = refl
 
-f : {|prog| : ℕ} → State {∞} {|prog|} → State
-f (Running _ s) = step s
-f s = s
+upTo : {|prog| : ℕ} → ℕ → State {∞} {|prog|} → State
+upTo zero s = s
+upTo (suc n) (Running _ s) = upTo n (step s)
+upTo (suc n) s = s
 
 p : Program 2
 p = INCR 0 ∷ INCR 0 ∷ []
@@ -363,7 +393,13 @@ _ : step (small p ⟨ zero , empty ⟩) ≡
       Running ⟨ suc zero , singleton zero 1 ⟩ (small p ⟨ suc zero , singleton zero 1 ⟩)
 _ = refl
 
-_ : f (step (small p ⟨ zero , empty ⟩)) ≡ Crashed ⟨ suc zero , singleton zero 2 ⟩
+_ : upTo 1 (step (small p ⟨ zero , empty ⟩)) ≡ Crashed ⟨ suc zero , singleton zero 2 ⟩
+_ = refl
+
+p₂ : Program 3
+p₂ = INCR 0 ∷ INCR 0 ∷ HALT ∷ []
+
+_ : upTo 2 (step (small p₂ ⟨ zero , empty ⟩)) ≡ Halted ⟨ suc (suc zero) , singleton zero 2 ⟩
 _ = refl
 #+end_src
 
