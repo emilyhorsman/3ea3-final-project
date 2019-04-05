@@ -314,7 +314,14 @@ f : {|prog| : ℕ} → State {∞} {|prog|} → State
 f (Running _ s) = step s
 f s = s
 
-_ : f (step (small (INCR 0 ∷ INCR 0 ∷ []) ⟨ zero , empty ⟩)) ≡ Crashed ⟨ suc zero , singleton zero 2 ⟩
+p : Program 2
+p = INCR 0 ∷ INCR 0 ∷ []
+
+_ : step (small p ⟨ zero , empty ⟩) ≡
+      Running ⟨ suc zero , singleton zero 1 ⟩ (small p ⟨ suc zero , singleton zero 1 ⟩)
+_ = refl
+
+_ : f (step (small p ⟨ zero , empty ⟩)) ≡ Crashed ⟨ suc zero , singleton zero 2 ⟩
 _ = refl
 #+end_src
 
