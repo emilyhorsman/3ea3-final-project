@@ -5,9 +5,10 @@
 
 This repo contains my final project for [[https://web.archive.org/web/20190331012540/http://www.cas.mcmaster.ca/~alhassm/][3EA3: Software Specifications and Correctness, Winter 2019]].
 
-* Agda
+* Dependencies
 
-Tested in Agda v2.6.0 ([[https://github.com/emilyhorsman/agda/commit/cc54e157a61dc97cbb9014f003d9637f2f821e3f][cc54e157a]]).
++ Agda v2.6.0 ([[https://github.com/emilyhorsman/agda/commit/cc54e157a61dc97cbb9014f003d9637f2f821e3f][cc54e157a]])
++ agda-stdlib v0.17 ([[https://github.com/agda/agda-stdlib/tree/v0.17][5819a4dd]])
 
 * Style Guide
 
