@@ -295,6 +295,31 @@ R₄ ≡ ∀ i : ℕ ∣ i ∈ registers c ∧ i ≠ label •
          lookup label (registers (conf E.d)) = lookup label (registers c)
 #+end_src
 
+*** ~JZ~: ~E.j~
+
+~JZ~ should advance the instruction pointer to a given index if the given register holds a value of 0.
+We have two more variables from pattern matching the ~Instruction~: ~label : RegisterLabel~ and ~target : InstructionIndex~.
+The given instruction index is ℕ not ~Fin~ for reasons discussed earlier.
+This means we must be cautious about holding Inv₂.
+
+1. We must hold Inv₂.
+   Advance to a ~Crashed~ state and do not change the configuration if the given index is out of bounds.
+2. We must hold Inv₂.
+   We must advance to a ~Crashed~ state if this is the last instruction in the program and the value at register ~label~ is not 0.
+3. If the value at register ~label~ is not 0 and this is not the last instruction in the program then we must advance to a ~Running~ state and increment the instruction pointer.
+4. No registers should be modified.
+5. If the value at register ~label~ is 0 and ~target~ is valid then we must advance to a ~Running~ state and change the instruction pointer to ~target~.
+
+#+begin_src
+is_zero ≡ lookup label (registers c) = 0
+
+R₁ ≡ target ≥ |program| ⇒ is-crashed E.j
+R₂ ≡ ¬ is_zero ∧ 1 + pointer c = |program| ⇒ is-crashed E.j
+R₃ ≡ ¬ is_zero ∧ 1 + pointer c < |program| ⇒ is-running E.j ∧ pointer (conf E.j) = 1 + pointer c
+R₄ ≡ is_zero ∧ target < |program| ⇒ is-running E.j ∧ pointer (conf E.j) = target
+R₅ ≡ registers (conf E.j) = registers c
+#+end_src
+
 *** ~HALT~: ~E.h~
 
 The ~HALT~ instruction halts execution.
