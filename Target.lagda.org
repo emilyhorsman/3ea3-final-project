@@ -407,9 +407,9 @@ next-conf-over-reg f label program c =
 #+end_src
 
 #+begin_src agda2
-zero? : {A : Set} → A → A → ℕ → A
-zero? y _ 0 = y
-zero? _ n _ = n
+valid-target : {A : Set} → A → A → ℕ → A
+valid-target y _ 0 = y
+valid-target _ n _ = n
 #+end_src
 
 #+begin_src agda2
@@ -429,7 +429,7 @@ jump target program c (no _) = Crashed c
 small-step (INCR label) = next-conf-over-reg suc label
 small-step (DECR label) = next-conf-over-reg Data.Nat.pred label
 small-step {_} {n} (JZ label target) program c =
-  zero?
+  valid-target
     (jump target program c (target ℕ<? n))
     (advance-conf (registers c) program c)
     (lookup label (registers c))
