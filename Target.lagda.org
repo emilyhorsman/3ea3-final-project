@@ -13,10 +13,12 @@ open import Data.Bool
 open import Data.Fin
 open import Data.Fin.Properties using (toℕ≤pred[n])
 open import Data.Maybe
-open import Data.Nat renaming (_<_ to _<ₙ_; _≤_ to _≤ₙ_; _+_ to _ℕ+_)
+open import Data.Nat renaming (_<_ to _<ₙ_; _≤_ to _≤ₙ_; _+_ to _ℕ+_; _<?_ to _ℕ<?_)
 open import Data.Product
 open import Data.Vec as Vec hiding (lookup)
 open import Function using (const; _∘_; _$_; _ˢ_)
+open import Relation.Binary
+open import Relation.Nullary
 open import Relation.Binary.PropositionalEquality
 open import Size
 open ≡-Reasoning
@@ -376,6 +378,18 @@ Finally, ~small-step~ is achieved by case splitting on each instruction and fill
 ~E.i~ and ~E.d~ have identical implementations save for the map given to ~modify-registers~.
 
 #+begin_src agda2
+advance-conf
+  : {i : Size} → {n : ℕ}
+  → Registers
+  → Program n
+  → Configuration n
+  → State {i} {n}
+advance-conf reg program c =
+  maybe
+    (λ ip → (Running ˢ (small program)) ⟨ ip , reg ⟩)
+    (Crashed ⟨ pointer c , reg ⟩)
+    (inc (pointer c))
+
 next-conf-over-reg
   : {i : Size} → {n : ℕ}
   → (ℕ → ℕ)
@@ -384,19 +398,36 @@ next-conf-over-reg
   → Configuration n
   → State {i} {n}
 next-conf-over-reg f label program c =
-  maybe
-    (λ ip → (Running ˢ (small program)) ⟨ ip , reg ⟩)
-    (Crashed ⟨ pointer c , reg ⟩)
-    (inc (pointer c))
-  where
-    reg : Registers
-    reg = modify-registers label f (registers c)
+  advance-conf (modify-registers label f (registers c)) program c
+#+end_src
+
+#+begin_src agda2
+zero? : {A : Set} → A → A → ℕ → A
+zero? y _ 0 = y
+zero? _ n _ = n
+#+end_src
+
+#+begin_src agda2
+jump
+  : {i : Size} → {n : ℕ}
+  → (target : InstructionIndex)
+  → Program n
+  → Configuration n
+  → Dec (target <ₙ n)
+  → State {i} {n}
+jump target program ⟨ _ , reg ⟩ (yes p) =
+  (Running ˢ (small program)) ⟨ fromℕ≤ p , reg ⟩
+jump target program c (no _) = Crashed c
 #+end_src
 
 #+begin_src agda2
 small-step (INCR label) = next-conf-over-reg suc label
 small-step (DECR label) = next-conf-over-reg Data.Nat.pred label
-small-step (JZ x x₃) x₁ x₂ = {!!}
+small-step {_} {n} (JZ label target) program c =
+  zero?
+    (jump target program c (target ℕ<? n))
+    (advance-conf (registers c) program c)
+    (lookup label (registers c))
 small-step HALT _ c = Halted c
 #+end_src
 
@@ -425,6 +456,19 @@ p₂ : Program 3
 p₂ = INCR 0 ∷ INCR 0 ∷ HALT ∷ []
 
 _ : upTo 2 (step (small p₂ ⟨ zero , empty ⟩)) ≡ Halted ⟨ suc (suc zero) , singleton zero 2 ⟩
+_ = refl
+
+p₃ : Program 2
+p₃ = INCR 1 ∷ JZ 0 0 ∷ []
+
+_ : upTo 5 (step (small p₃ ⟨ zero , empty ⟩)) ≡
+      Running ⟨ zero , singleton 1 3 ⟩ (small p₃ ⟨ zero , singleton 1 3 ⟩)
+_ = refl
+
+p₄ : Program 1
+p₄ = JZ 0 1 ∷ []
+
+_ : step (small p₄ ⟨ zero , empty ⟩) ≡ Crashed ⟨ zero , empty ⟩
 _ = refl
 #+end_src
 
