@@ -13,7 +13,12 @@ open import Data.Bool
 open import Data.Fin
 open import Data.Fin.Properties using (toℕ≤pred[n])
 open import Data.Maybe
-open import Data.Nat renaming (_<_ to _<ₙ_; _≤_ to _≤ₙ_; _+_ to _ℕ+_; _<?_ to _ℕ<?_)
+open import Data.Nat renaming
+  ( _<_ to _ℕ<_
+  ; _≤_ to _ℕ≤_
+  ; _+_ to _ℕ+_
+  ; _<?_ to _ℕ<?_
+  )
 open import Data.Product
 open import Data.Vec as Vec hiding (lookup)
 open import Function using (const; _∘_; _$_; _ˢ_)
@@ -279,7 +284,7 @@ Note that we do not need to accept Inv₂ as an argument because we get it from 
 pf-R₁-R₂-completeness
   : (|program| : ℕ)
   → (c : Configuration |program|)
-  → toℕ (suc (pointer c)) ≤ₙ |program|
+  → toℕ (suc (pointer c)) ℕ≤ |program|
 pf-R₁-R₂-completeness |program| c = toℕ≤pred[n] (suc (pointer c))
 #+end_src
 
@@ -413,7 +418,7 @@ jump
   → (target : InstructionIndex)
   → Program n
   → Configuration n
-  → Dec (target <ₙ n)
+  → Dec (target ℕ< n)
   → State {i} {n}
 jump target program ⟨ _ , reg ⟩ (yes p) =
   (Running ˢ (small program)) ⟨ fromℕ≤ p , reg ⟩

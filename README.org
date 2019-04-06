@@ -54,3 +54,11 @@ Tested in Agda v2.6.0 ([[https://github.com/emilyhorsman/agda/commit/cc54e157a61
   open import Data.AVL <-isStrictTotalOrder as AVL
   #+end_src
 + Align the ~:~ operator in data type constructors when they are within four columns.
++ Rename binary operators by prepending the type to the operator.
+  For instance, when using ~Data.Fin~ and ~Data.Nat~ at the same time:
+
+  #+begin_src
+  open import Data.Nat renaming (_<_ to _ℕ<_)
+  #+end_src
+
+  This is in line with how agda-stdlib does it.
